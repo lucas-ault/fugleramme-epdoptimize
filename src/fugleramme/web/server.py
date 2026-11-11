@@ -156,7 +156,7 @@ def _banded_png(ctx: modes.Context) -> bytes:
     """The kiosk's page under a margin test, rendered past the page cache so the band
     never lands in it."""
     buffer = io.BytesIO()
-    page = dither(modes.render(ctx), ctx.dither)
+    page = dither(modes.render(ctx), ctx.dither, ctx.recipe)
     banded(page, ctx.margin, BLACK).save(buffer, format="PNG")
     return buffer.getvalue()
 

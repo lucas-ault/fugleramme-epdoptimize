@@ -18,7 +18,7 @@ import io
 import logging
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import cache
 from pathlib import Path
@@ -31,7 +31,7 @@ from .languages import STATION, Drawable, Namer, english_name, station_locale
 from .names import drawable_keys, image_for, normalize, perches_for, resolve
 from .render import fonts
 from .render.collage import KEY_LIMIT, NO_LIMIT, gather_entries, render_collage, selected_species
-from .render.dither import FRAME, dither
+from .render.dither import CUSTOM, FRAME, Recipe, dither
 from .render.page import NEW, Edges, day_ordinal
 from .render.plate import effective_margin, render_plate
 from .render.setup import setup_page
@@ -71,6 +71,7 @@ class Context:
     spotlight: bool
     margin: Edges  # of the short side; the settings are percents
     dither: str = FRAME  # the panel reduction; the kiosk and the preview use it too
+    recipe: Recipe = field(default_factory=Recipe)  # Custom's overrides; ignored otherwise
     textured: bool = True
 
     def perches(self):
@@ -112,6 +113,19 @@ def context(
         spotlight=settings.spotlight,
         margin=Edges(*(m / 100 for m in settings.margins(panel))),
         dither=settings.dither,
+        recipe=Recipe(
+            base=settings.dither_base,
+            kind=settings.dither_type,
+            matrix=settings.dither_matrix,
+            serpentine=settings.dither_serpentine,
+            match=settings.dither_match,
+            tone=settings.dither_tone,
+            exposure=settings.dither_exposure,
+            saturation=settings.dither_saturation,
+            contrast=settings.dither_contrast,
+            curve=settings.dither_curve,
+            range=settings.dither_range,
+        ),
         textured=textured,
     )
 
@@ -358,6 +372,7 @@ def state_key(ctx: Context) -> tuple:
         ctx.font_key,
         ctx.label_size,
         ctx.dither,
+        ctx.recipe if ctx.dither == CUSTOM else None,
         ctx.layout if mode.windowed else None,
         ctx.name_key if mode.windowed else None,
         # The plate clamps to its own margin, so a nudge under it must not repaint.
@@ -431,6 +446,6 @@ def png_bytes(ctx: Context) -> bytes:
         if _cache is not None and _cache[0] == key:
             return _cache[1]
         buffer = io.BytesIO()
-        dither(render(ctx), ctx.dither).save(buffer, format="PNG")
+        dither(render(ctx), ctx.dither, ctx.recipe).save(buffer, format="PNG")
         _cache = (key, buffer.getvalue())
         return _cache[1]

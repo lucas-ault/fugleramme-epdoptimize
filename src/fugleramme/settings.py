@@ -32,7 +32,16 @@ from .config import (
 from .languages import NONE, SCIENTIFIC, STATION
 from .modes import DEFAULT_MODE, MODES
 from .render.collage import DEFAULT_MARGIN, DEFAULT_RANKING, NO_LIMIT, RANKINGS
-from .render.dither import DITHERS, FRAME
+from .render.dither import (
+    DITHER_MATCHES,
+    DITHER_MATRICES,
+    DITHER_RANGES,
+    DITHER_TONES,
+    DITHER_TYPES,
+    DITHERS,
+    FRAME,
+    PRESETS,
+)
 from .render.fonts import DEFAULT_FONT, DEFAULT_LABEL_SIZE, FONTS, LABEL_SIZES
 from .render.packing import DEFAULT_LAYOUT, LAYOUTS
 from .source import (
@@ -140,6 +149,20 @@ class Settings:
     # The panel's reduction. `frame` is the one it has always used, so a file
     # that names none keeps today's glass.
     dither: str = FRAME
+    # Custom starts from a preset and replaces only the fields it names. Empty
+    # means that part stays with the preset. Ignored unless dither is custom, and
+    # a file from before these fields keeps the defaults.
+    dither_base: str = "balanced"
+    dither_type: str = ""
+    dither_matrix: str = ""
+    dither_serpentine: bool = False
+    dither_match: str = ""
+    dither_tone: str = ""
+    dither_exposure: float = 0
+    dither_saturation: float = 0
+    dither_contrast: float = 0
+    dither_curve: float = 0.7
+    dither_range: str = ""
     # The collage with the latest bird drawn large in the middle (#185).
     spotlight: bool = False
     auto_update: bool = False
@@ -246,6 +269,17 @@ def _as_int(value, default: int, lo: int, hi: int) -> int:
         return max(lo, min(hi, int(value)))
     except (TypeError, ValueError):
         return default
+
+
+def _as_tenth(value, default: float, lo: float, hi: float) -> float:
+    """A slider step. Out of range clamps; anything that is not a number does not."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    if not math.isfinite(number):
+        return default
+    return round(max(lo, min(hi, number)) * 10) / 10
 
 
 def _as_edge(value, default: int | None) -> int | None:
@@ -388,6 +422,27 @@ def _coerce(raw: dict, base: Settings | None = None) -> Settings:
         style=_style(raw, d.style),
         layout=_one_of(str(raw.get("layout", d.layout)), LAYOUTS, d.layout),
         dither=_one_of(str(raw.get("dither", d.dither)), DITHERS, d.dither),
+        dither_base=_one_of(str(raw.get("dither_base", d.dither_base)), PRESETS, d.dither_base),
+        dither_type=_one_of(
+            str(raw.get("dither_type", d.dither_type)), DITHER_TYPES, d.dither_type
+        ),
+        dither_matrix=_one_of(
+            str(raw.get("dither_matrix", d.dither_matrix)), DITHER_MATRICES, d.dither_matrix
+        ),
+        dither_serpentine=_as_bool(raw.get("dither_serpentine"), d.dither_serpentine),
+        dither_match=_one_of(
+            str(raw.get("dither_match", d.dither_match)), DITHER_MATCHES, d.dither_match
+        ),
+        dither_tone=_one_of(
+            str(raw.get("dither_tone", d.dither_tone)), DITHER_TONES, d.dither_tone
+        ),
+        dither_exposure=_as_tenth(raw.get("dither_exposure"), d.dither_exposure, -2, 2),
+        dither_saturation=_as_tenth(raw.get("dither_saturation"), d.dither_saturation, -1, 1),
+        dither_contrast=_as_tenth(raw.get("dither_contrast"), d.dither_contrast, -1, 1),
+        dither_curve=_as_tenth(raw.get("dither_curve"), d.dither_curve, 0, 1),
+        dither_range=_one_of(
+            str(raw.get("dither_range", d.dither_range)), DITHER_RANGES, d.dither_range
+        ),
         spotlight=_as_bool(raw.get("spotlight"), d.spotlight),
         auto_update=_as_bool(raw.get("auto_update"), d.auto_update),
         show_names=_as_bool(raw.get("show_names"), d.show_names),

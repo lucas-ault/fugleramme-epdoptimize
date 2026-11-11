@@ -291,7 +291,7 @@ def test_a_dither_change_repaints_past_the_refresh_floor(tmp_path, images, detec
 
     with (
         patch.object(service.updates, "available", return_value=None),
-        patch.object(service, "dither", side_effect=lambda image, preset="frame": image),
+        patch.object(service, "dither", side_effect=lambda image, preset="frame", recipe=None: image),
         patch.object(service.modes, "render", side_effect=modes.render) as render,
         patch.object(service.time, "sleep", sleep),
         pytest.raises(_Stop),

@@ -88,6 +88,9 @@ you have not saved yet.
 set of birds can pick a different preset. The paper, and the soft edge around
 each bird, stay on the frame's own reduction either way. The preset is for the birds.
 
+**Custom** starts from one of those presets. The rows under it replace only the
+part you change, and the paper stays on the frame's reduction.
+
 | Choice | What it does |
 | --- | --- |
 | Frame | The panel's own reduction |
@@ -99,6 +102,7 @@ each bird, stay on the frame's own reduction either way. The preset is for the b
 | Grayscale | Removes colour |
 | Restore | Opens up a faded scan or painting |
 | Poster scan | Cools warm paper and keeps strong poster colours |
+| Custom | A preset, with only the parts you change |
 
 ### Labels
 

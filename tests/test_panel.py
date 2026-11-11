@@ -13,7 +13,7 @@ import pytest
 from PIL import Image
 
 from fugleramme.panel import Panel, external_resolution, resolution_of
-from fugleramme.render.dither import dither
+from fugleramme.render.dither import Recipe, dither
 from fugleramme.render.paper import PANEL_PAPER, paper_texture
 
 # inky.inky_el133uf1.DESATURATED_PALETTE - what the driver quantizes against.
@@ -132,6 +132,44 @@ def test_a_preset_survives_the_driver_the_same_way():
     palette_image.putpalette(numpy.array(DESATURATED, dtype=numpy.uint8).flatten().tobytes())
     remapped = image.convert("RGB").quantize(6, palette=palette_image, dither=Image.Dither.NONE)
     assert numpy.array_equal(numpy.array(image), numpy.array(remapped))
+
+
+def test_a_custom_recipe_sends_only_what_changed():
+    assert Recipe().options() == {"processingPreset": "balanced"}
+    tuned = Recipe(
+        base="vivid", kind="ordered", match="lab", tone="off", range="display", serpentine=True
+    )
+    options = tuned.options()
+    assert options["ditheringType"] == "ordered"
+    assert "serpentine" not in options  # ordered dither has no scan direction
+    assert options["toneMapping"] == {"mode": "off"}
+    assert options["colorMatching"] == "lab"
+    assert options["dynamicRangeCompression"] == {"mode": "display"}
+    diffusion = Recipe(
+        matrix="stucki", serpentine=True, tone="contrast", exposure=1, saturation=0.4, contrast=-0.2
+    )
+    sent = diffusion.options()
+    assert sent["errorDiffusionMatrix"] == "stucki" and sent["serpentine"] is True
+    assert sent["toneMapping"] == {
+        "mode": "contrast",
+        "exposure": 1,
+        "saturation": 0.4,
+        "contrast": -0.2,
+    }
+
+
+def test_a_custom_recipe_keeps_the_frames_paper():
+    _node_20()
+    source = Image.new("RGB", (48, 36), PANEL_PAPER)
+    source.paste(Image.new("RGB", (12, 10), (20, 40, 180)), (18, 13))
+    page = dither(source, "custom", Recipe(kind="quantizationOnly", tone="off"))
+    framed = dither(source)
+    assert page.convert("RGB").getpixel((0, 0)) == framed.convert("RGB").getpixel((0, 0))
+    assert page.mode == "P" and len(page.palette.colors) == 6
+    palette_image = Image.new("P", (1, 1))
+    palette_image.putpalette(numpy.array(DESATURATED, dtype=numpy.uint8).flatten().tobytes())
+    remapped = page.convert("RGB").quantize(6, palette=palette_image, dither=Image.Dither.NONE)
+    assert numpy.array_equal(numpy.array(page), numpy.array(remapped))
 
 
 def test_a_preset_keeps_the_frames_paper():

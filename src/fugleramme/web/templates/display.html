@@ -33,6 +33,35 @@
   <h2>Panel colours {{ hint(dither_hint) }}</h2>
   <label><span>Dither</span>
     <select name="dither">{{ options(dithers, settings.dither) }}</select></label>
+  {# Hidden, and its fields disabled, until Dither is Custom, so another choice
+     posts nothing for them and the stored recipe stands. #}
+  <div id="dither-custom"{{ flags(hidden=settings.dither != "custom") }}>
+    <label class="sub"><small>Based on</small>
+      <select name="dither_base">{{ options(dither_bases, settings.dither_base) }}</select></label>
+    <label class="sub"><small>Dithering</small>
+      <select name="dither_type">{{ options(dither_types, settings.dither_type) }}</select></label>
+    <div id="dither-spread"{{ flags(hidden=settings.dither_type not in ("", "errorDiffusion")) }}>
+      <label class="sub"><small>Matrix</small>
+        <select name="dither_matrix">{{ options(dither_matrices, settings.dither_matrix) }}</select></label>
+      {% call checkbox("dither_serpentine", settings.dither_serpentine, declared=true) %}Serpentine {{ hint("Scan each row the other way, so the pattern does not lean.") }}{% endcall %}
+    </div>
+    <label class="sub"><small>Colour match</small>
+      <select name="dither_match">{{ options(dither_matches, settings.dither_match) }}</select></label>
+    <label class="sub"><small>Tone</small>
+      <select name="dither_tone">{{ options(dither_tones, settings.dither_tone) }}</select></label>
+    <div id="dither-levels"{{ flags(hidden=settings.dither_tone not in ("contrast", "scurve")) }}>
+      <label id="dither-exposure"><span><span class="caption">Exposure</span> <small>{{ exposure_label(settings.dither_exposure) }}</small></span>
+        <input type="range" name="dither_exposure" min="-2" max="2" step="0.1" value="{{ '%.1f' % settings.dither_exposure }}"></label>
+      <label id="dither-saturation"><span><span class="caption">Saturation</span> <small>{{ saturation_label(settings.dither_saturation) }}</small></span>
+        <input type="range" name="dither_saturation" min="-1" max="1" step="0.1" value="{{ '%.1f' % settings.dither_saturation }}"></label>
+      <label id="dither-contrast"{{ flags(hidden=settings.dither_tone != "contrast") }}><span><span class="caption">Contrast</span> <small>{{ contrast_label(settings.dither_contrast) }}</small></span>
+        <input type="range" name="dither_contrast" min="-1" max="1" step="0.1" value="{{ '%.1f' % settings.dither_contrast }}"></label>
+      <label id="dither-curve"{{ flags(hidden=settings.dither_tone != "scurve") }}><span><span class="caption">Curve</span> <small>{{ curve_label(settings.dither_curve) }}</small></span>
+        <input type="range" name="dither_curve" min="0" max="1" step="0.1" value="{{ '%.1f' % settings.dither_curve }}"></label>
+    </div>
+    <label class="sub"><small>Range</small>
+      <select name="dither_range">{{ options(dither_ranges, settings.dither_range) }}</select></label>
+  </div>
   {% if node_missing %}
   <p class="note warn">This machine can't run the panel colour presets yet. Run <code class="cmd">{{ node_install }}</code> and they take effect on the next render. Until then the panel keeps its own reduction.</p>
   {% endif %}

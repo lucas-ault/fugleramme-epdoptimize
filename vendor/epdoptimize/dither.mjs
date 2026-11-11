@@ -1,7 +1,8 @@
 // epdoptimize 1.4.0, Apache-2.0 (LICENSE). RgbQuant is bundled in dist and is MIT
 // (LICENSE.rgbquant). Reads a width, a height and RGBA on stdin. Writes device-color
 // RGB on stdout. A choice of "auto" reports the classification on stderr as one
-// line beginning "EPD ".
+// line beginning "EPD ". A choice of "custom" takes a JSON options object as its
+// third argument and spreads it over the named preset.
 
 import { readFileSync } from "node:fs";
 import {
@@ -37,6 +38,15 @@ function canvas(width, height, data) {
 }
 
 const preset = process.argv[2];
+let extra = {};
+if (process.argv[3]) {
+  try {
+    extra = JSON.parse(process.argv[3]);
+  } catch {
+    process.stderr.write("epdoptimize: bad options\n");
+    process.exit(1);
+  }
+}
 const input = readFileSync(0);
 if (input.length < 8) {
   process.stderr.write("epdoptimize: short header\n");
@@ -66,6 +76,15 @@ if (preset === "auto") {
   const chosen = suggestion.ditherOptions.processingPreset ?? ranked[0]?.[0] ?? "";
   process.stderr.write(`EPD ${JSON.stringify({ imageKind: suggestion.imageKind, preset: chosen })}\n`);
   options = { ...suggestion.ditherOptions, palette, processingEngine: "auto", adjustmentEngine: "js" };
+} else if (preset === "custom") {
+  options = {
+    ...options,
+    ...extra,
+    palette,
+    processingEngine: "auto",
+    adjustmentEngine: "js",
+    processingPreset: extra.processingPreset || "balanced",
+  };
 } else {
   options.processingPreset = preset;
 }

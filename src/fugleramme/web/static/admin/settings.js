@@ -96,6 +96,46 @@ function syncMargin() {
   });
 }
 
+// The words match render.dither's labels, so a drag reads the same as the first paint.
+const tenth = (input) => Math.round(Number(input.value) * 10) / 10;
+function toneLabel(input) {
+  const value = tenth(input);
+  if (input.name === "dither_curve") {
+    if (value <= 0) return "Flat";
+    if (value < 0.4) return "Gentle";
+    if (value < 0.8) return "Medium";
+    return "Strong";
+  }
+  if (value === 0) return "Neutral";
+  if (input.name === "dither_exposure") {
+    const stops = Math.abs(value);
+    return `${stops} ${stops === 1 ? "stop" : "stops"} ${value > 0 ? "brighter" : "darker"}`;
+  }
+  const much = Math.abs(value) >= 0.5;
+  if (input.name === "dither_saturation") {
+    if (value > 0) return much ? "Much richer" : "Richer";
+    return much ? "Much paler" : "Paler";
+  }
+  if (value > 0) return much ? "Much more" : "More";
+  return much ? "Much less" : "Less";
+}
+
+// Hidden until Custom, and a row hidden until its choice needs it. Disabled
+// fields post nothing, so a save of another dither leaves the recipe stored.
+const customBox = document.getElementById("dither-custom");
+const spread = document.getElementById("dither-spread");
+const levels = document.getElementById("dither-levels");
+function syncDither() {
+  const custom = form.dither.value === "custom";
+  reveal(customBox, custom);
+  const diffusion = !form.dither_type.value || form.dither_type.value === "errorDiffusion";
+  reveal(spread, custom && diffusion);
+  const tone = form.dither_tone.value;
+  reveal(levels, custom && (tone === "contrast" || tone === "scurve"));
+  reveal(document.getElementById("dither-contrast"), custom && tone === "contrast");
+  reveal(document.getElementById("dither-curve"), custom && tone === "scurve");
+}
+
 function sync() {
   syncMode();
   syncPanel();
@@ -103,6 +143,7 @@ function sync() {
   syncNames();
   syncSizes();
   syncMargin();
+  syncDither();
 }
 
 // A slider renders on release, or a keyboard step. A changed margin also shows
@@ -124,10 +165,11 @@ form.addEventListener("change", (e) => {
 // dirty check reads them - a round trip back to the saved mode is not a change.
 form.addEventListener("input", (e) => {
   if (e.target.type === "range") {
-    e.target.closest("label").querySelector("small").textContent = e.target.value + "%";
+    const reading = e.target.name.startsWith("dither_") ? toneLabel(e.target) : e.target.value + "%";
+    e.target.closest("label").querySelector("small").textContent = reading;
     // Locked, the edges follow, so unlocking starts them at the one margin.
     if (e.target === margin && edgeLock.checked) edges.forEach((edge) => { edge.value = margin.value; });
-    shadeMat(hungMargins());  // on the page already on screen, until the render catches up
+    if (e.target.name.startsWith("margin")) shadeMat(hungMargins());  // until the render catches up
   }
   sync();
   if (e.target.type === "range") return holdRender();  // a drag renders on release only

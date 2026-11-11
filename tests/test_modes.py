@@ -17,6 +17,7 @@ from fugleramme.api import ApiSource
 from fugleramme.languages import NONE, STATION, Namer, namer, numeric
 from fugleramme.names import normalize
 from fugleramme.render.collage import KEY_LIMIT, NO_LIMIT
+from fugleramme.render.dither import Recipe
 from fugleramme.render.page import NEW, NO_MARGIN
 from fugleramme.render.paper import PANEL_PAPER
 from fugleramme.render.plate import effective_margin, render_plate
@@ -266,6 +267,10 @@ def test_the_web_page_is_the_dithered_page(tmp_path, images, source):
     assert image.mode == "P"
     assert len(image.getcolors(maxcolors=16) or []) <= 6
     assert modes.state_key(replace(ctx, dither="vivid")) != modes.state_key(ctx)
+    custom = replace(ctx, dither="custom")
+    assert modes.state_key(replace(custom, recipe=Recipe(tone="off"))) != modes.state_key(custom)
+    # The recipe is the Custom choice's. Another reduction does not carry it.
+    assert modes.state_key(replace(ctx, recipe=Recipe(tone="off"))) == modes.state_key(ctx)
 
 
 def test_a_numbered_key_caps_the_page(tmp_path, images, source):

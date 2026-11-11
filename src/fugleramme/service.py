@@ -248,8 +248,8 @@ def run(config: Config) -> None:
         )
         try:
             last_artless = _log_artless(ctx, last_artless)
-            # dither rides in the page key, so a saved preset repaints the glass and
-            # the kiosk reloads. The pack cache does not carry it.
+            # dither rides in the page key, and a Custom recipe with it, so a saved
+            # choice repaints the glass and the kiosk reloads. The pack cache does not carry it.
             key = (
                 modes.state_key(ctx),
                 outside,
@@ -265,20 +265,20 @@ def run(config: Config) -> None:
             if due and test is not None:
                 # The glass's alone: /frame.e6 and /frame.png keep the page.
                 pending = (
-                    banded(dither(modes.render(ctx), settings.dither), ctx.margin, BLACK),
+                    banded(dither(modes.render(ctx), ctx.dither, ctx.recipe), ctx.margin, BLACK),
                     settings.rotation,
                 )
                 log.info("Showing a margin test on the panel at %dx%d", *size)
                 last_key, last_settings = key, paced
             elif due:
-                panel_image = dither(modes.render(ctx), settings.dither)
+                panel_image = dither(modes.render(ctx), ctx.dither, ctx.recipe)
                 panel_image.save(config.output_path)
                 log.info("Rendered %s for the panel at %dx%d", ctx.mode, *size)
                 frame = (panel_image, settings.rotation)
                 external = frame
                 if outside != size:
                     external = (
-                        dither(modes.render(replace(ctx, resolution=outside)), settings.dither),
+                        dither(modes.render(replace(ctx, resolution=outside)), ctx.dither, ctx.recipe),
                         frame[1],
                     )
                     log.info("Rendered %s for the external panel at %dx%d", ctx.mode, *outside)

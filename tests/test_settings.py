@@ -438,6 +438,32 @@ def test_a_missing_or_unknown_dither_stays_the_frame(tmp_path):
     assert SettingsStore(path).update(dither="balanced").dither == "balanced"
 
 
+def test_a_missing_custom_recipe_stays_neutral_and_a_bad_one_falls_back(tmp_path):
+    """A file from before Custom names none of it. A value the admin does not
+    offer falls back; a slider past its ends clamps."""
+    path = tmp_path / "settings.json"
+    fresh = SettingsStore(path).get()
+    assert fresh.dither_base == "balanced"
+    assert fresh.dither_type == "" and fresh.dither_serpentine is False
+    assert fresh.dither_curve == 0.7
+    path.write_text(
+        json.dumps(
+            {
+                "dither": "custom",
+                "dither_base": "nope",
+                "dither_type": "nope",
+                "dither_exposure": 9,
+                "dither_curve": "x",
+            }
+        )
+    )
+    got = SettingsStore(path).get()
+    assert got.dither == "custom"
+    assert got.dither_base == "balanced" and got.dither_type == ""
+    assert got.dither_exposure == 2
+    assert got.dither_curve == 0.7
+
+
 def test_detector_connection_round_trips(tmp_path):
     path = tmp_path / "s.json"
     saved = SettingsStore(path).update(

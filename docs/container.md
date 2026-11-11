@@ -82,7 +82,7 @@ Every setting on the admin page can be seeded with `FUGLERAMME_<NAME>`:
       FUGLERAMME_SECONDARY_LANGUAGE: ""              # empty for none
       FUGLERAMME_LABEL_FONT: gentium                 # gentium | garamond | cormorant | baskerville | playfair | alegreya | bitter
       FUGLERAMME_LABEL_SIZE: medium                  # small | medium | large | xlarge
-      FUGLERAMME_DITHER: frame                       # frame | auto | balanced | dynamic | vivid | soft | grayscale | restore | posterScan
+      FUGLERAMME_DITHER: frame                       # frame | auto | balanced | dynamic | vivid | soft | grayscale | restore | posterScan | custom
       FUGLERAMME_ADMIN_PASSWORD: my-admin-password   # the password the admin page asks for
       FUGLERAMME_REQUIRE_SIGN_IN: "true"             # default false, which leaves the admin page open
       FUGLERAMME_BEHIND_PROXY: "false"               # true if the frame is behind a reverse proxy

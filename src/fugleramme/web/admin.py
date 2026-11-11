@@ -43,7 +43,22 @@ from ..languages import (
 from ..modes import MODES
 from ..names import available_styles, image_for, normalize, origin_of, source_of
 from ..render.collage import KEY_LIMIT, NO_LIMIT, RANKINGS
-from ..render.dither import DITHERS, FRAME, NODE_INSTALL, node_ready
+from ..render.dither import (
+    DITHER_MATCHES,
+    DITHER_MATRICES,
+    DITHER_RANGES,
+    DITHER_TONES,
+    DITHER_TYPES,
+    DITHERS,
+    FRAME,
+    NODE_INSTALL,
+    PRESETS,
+    contrast_label,
+    curve_label,
+    exposure_label,
+    node_ready,
+    saturation_label,
+)
 from ..render.fonts import FONTS, LABEL_SIZES, face, load, needs_shaping
 from ..render.packing import LAYOUTS
 from ..settings import (
@@ -572,6 +587,16 @@ def display_tab(
         layout_hint="\n\n".join(f"{layout.label}: {layout.blurb}" for layout in LAYOUTS.values()),
         dithers=[(key, label) for key, (label, _) in DITHERS.items()],
         dither_hint="\n\n".join(f"{label}: {blurb}" for label, blurb in DITHERS.values()),
+        dither_bases=list(PRESETS.items()),
+        dither_types=list(DITHER_TYPES.items()),
+        dither_matrices=list(DITHER_MATRICES.items()),
+        dither_matches=list(DITHER_MATCHES.items()),
+        dither_tones=list(DITHER_TONES.items()),
+        dither_ranges=list(DITHER_RANGES.items()),
+        exposure_label=exposure_label,
+        saturation_label=saturation_label,
+        contrast_label=contrast_label,
+        curve_label=curve_label,
         node_missing=settings.dither != FRAME and not node_ready(),
         node_install=NODE_INSTALL,
         names_failure=names_failure,

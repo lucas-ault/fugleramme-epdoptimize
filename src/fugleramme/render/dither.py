@@ -19,6 +19,8 @@ import json
 import logging
 import struct
 import subprocess
+from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -30,8 +32,10 @@ log = logging.getLogger(__name__)
 
 # What the admin offers. `frame` is this module's own reduction, and the value a
 # settings file from before the choice names. The rest are epdoptimize's presets;
-# `auto` asks that library to pick one from the page.
+# `auto` asks that library to pick one from the page. `custom` starts from a
+# preset and replaces only the fields a recipe names.
 FRAME = "frame"
+CUSTOM = "custom"
 DITHERS: dict[str, tuple[str, str]] = {
     FRAME: (
         "Frame",
@@ -51,7 +55,34 @@ DITHERS: dict[str, tuple[str, str]] = {
         "Poster scan",
         "Cools warm paper, holds the black ink, and keeps strong poster colours.",
     ),
+    CUSTOM: (
+        "Custom",
+        "Starts from a preset. The rows below replace only what you change.",
+    ),
 }
+
+# Empty is "as the preset": that part is not sent, so the base preset keeps it.
+PRESETS = {key: label for key, (label, _) in DITHERS.items() if key not in (FRAME, "auto", CUSTOM)}
+DITHER_TYPES = {
+    "": "As the preset",
+    "errorDiffusion": "Error diffusion",
+    "ordered": "Ordered",
+    "blueNoise": "Blue noise",
+    "quantizationOnly": "Plain",
+}
+DITHER_MATRICES = {
+    "": "As the preset",
+    "floydSteinberg": "Floyd-Steinberg",
+    "atkinson": "Atkinson",
+    "jarvis": "Jarvis",
+    "stucki": "Stucki",
+    "burkes": "Burkes",
+    "sierra3": "Sierra",
+}
+DITHER_MATCHES = {"": "As the preset", "rgb": "RGB", "lab": "LAB", "chroma": "Chroma"}
+DITHER_TONES = {"": "As the preset", "off": "Off", "contrast": "Contrast", "scurve": "S-curve"}
+DITHER_RANGES = {"": "As the preset", "off": "Off", "display": "Display", "auto": "Auto"}
+_DIFFUSION = ("", "errorDiffusion")
 
 # Bookworm's nodejs package is 18, which cannot run the bundle. NodeSource's 20.x can.
 NODE_INSTALL = "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs"
@@ -140,6 +171,105 @@ def _restore_paper(source: Image.Image, reduced: Image.Image) -> Image.Image:
     return page
 
 
+def exposure_label(value: float) -> str:
+    """How an exposure slider reads. `0` is the picture as it is."""
+    value = round(value, 1)
+    if value == 0:
+        return "Neutral"
+    stops = abs(value)
+    unit = "stop" if stops == 1 else "stops"
+    way = "brighter" if value > 0 else "darker"
+    return f"{stops:g} {unit} {way}"
+
+
+def saturation_label(value: float) -> str:
+    value = round(value, 1)
+    if value == 0:
+        return "Neutral"
+    much = abs(value) >= 0.5
+    if value > 0:
+        return "Much richer" if much else "Richer"
+    return "Much paler" if much else "Paler"
+
+
+def contrast_label(value: float) -> str:
+    value = round(value, 1)
+    if value == 0:
+        return "Neutral"
+    much = abs(value) >= 0.5
+    if value > 0:
+        return "Much more" if much else "More"
+    return "Much less" if much else "Less"
+
+
+def curve_label(value: float) -> str:
+    value = round(value, 1)
+    if value <= 0:
+        return "Flat"
+    if value < 0.4:
+        return "Gentle"
+    if value < 0.8:
+        return "Medium"
+    return "Strong"
+
+
+@dataclass(frozen=True)
+class Recipe:
+    """A Custom reduction. An empty choice stays with `base`, so a file that
+    names none of these is Balanced with nothing replaced."""
+
+    base: str = "balanced"
+    kind: str = ""
+    matrix: str = ""
+    serpentine: bool = False
+    match: str = ""
+    tone: str = ""
+    exposure: float = 0
+    saturation: float = 0
+    contrast: float = 0
+    curve: float = 0.7
+    range: str = ""
+
+    def options(self) -> dict[str, Any]:
+        """What epdoptimize is given. Only a choice that differs from the preset."""
+        out: dict[str, Any] = {"processingPreset": self.base}
+        if self.kind:
+            out["ditheringType"] = self.kind
+        if self.kind in _DIFFUSION:
+            if self.matrix:
+                out["errorDiffusionMatrix"] = self.matrix
+            if self.serpentine:
+                out["serpentine"] = True
+        if self.match:
+            out["colorMatching"] = self.match
+        tone = _tone(self)
+        if tone is not None:
+            out["toneMapping"] = tone
+        if self.range:
+            out["dynamicRangeCompression"] = {"mode": self.range}
+        return out
+
+
+def _tone(recipe: Recipe) -> dict[str, Any] | None:
+    if not recipe.tone:
+        return None
+    if recipe.tone == "off":
+        return {"mode": "off"}
+    if recipe.tone == "contrast":
+        return {
+            "mode": "contrast",
+            "exposure": recipe.exposure,
+            "saturation": recipe.saturation,
+            "contrast": recipe.contrast,
+        }
+    return {
+        "mode": "scurve",
+        "exposure": recipe.exposure,
+        "saturation": recipe.saturation,
+        "strength": recipe.curve,
+    }
+
+
 def _device_palette() -> Image.Image:
     """The driver's six inks, so a no-dither quantize lands on its index order."""
     pal = Image.new("P", (1, 1))
@@ -197,17 +327,21 @@ def _note_auto(stderr: bytes) -> None:
     log.info("Auto dither chose %s for a %s page", key[1], key[0])
 
 
-def _epd(image: Image.Image, preset: str) -> Image.Image:
+def _epd(image: Image.Image, preset: str, options: dict[str, Any] | None = None) -> Image.Image:
     """epdoptimize against its Spectra 6 palette, then the driver's inks with no
     second dither. The paper and the halo are put back from the frame reduction,
     so the preset's curve does not lift the sheet to white. A failure keeps the
-    page moving on the frame dither."""
+    page moving on the frame dither. `options` is a Custom recipe; a preset
+    passes none."""
     global _last_failure
     rgba = image.convert("RGBA")
     width, height = rgba.size
+    command = ["node", str(_SCRIPT), preset]
+    if options:
+        command.append(json.dumps(options, separators=(",", ":")))
     try:
         done = subprocess.run(
-            ["node", str(_SCRIPT), preset],
+            command,
             input=struct.pack("<II", width, height) + rgba.tobytes(),
             capture_output=True,
             check=True,
@@ -228,10 +362,13 @@ def _epd(image: Image.Image, preset: str) -> Image.Image:
     return _restore_paper(image, reduced)
 
 
-def dither(image: Image.Image, preset: str = FRAME) -> Image.Image:
-    """Quantize an RGB image to the 6-color panel palette (returns mode "P")."""
+def dither(image: Image.Image, preset: str = FRAME, recipe: Recipe | None = None) -> Image.Image:
+    """Quantize an RGB image to the 6-color panel palette (returns mode "P").
+    `recipe` applies only when `preset` is Custom."""
     if preset not in DITHERS or preset == FRAME:
         return _frame(image)
+    if preset == CUSTOM:
+        return _epd(image, preset, (recipe or Recipe()).options())
     return _epd(image, preset)
 
 

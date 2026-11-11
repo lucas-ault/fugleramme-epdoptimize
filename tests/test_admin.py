@@ -311,6 +311,38 @@ def test_the_dither_select_saves_a_preset_and_auto(tmp_path, source):
     assert store.update(**admin.form_changes({"dither": ["nope"]})).dither == "frame"
 
 
+def test_the_custom_dither_round_trips_and_a_bad_value_falls_back(tmp_path, source):
+    page = _page(tmp_path, source())
+    assert 'id="dither-custom" hidden' in page
+    assert "dither_serpentine" in _declared(page)
+    store = SettingsStore(tmp_path / "s.json")
+    saved = store.update(
+        **admin.form_changes(
+            {
+                "dither": ["custom"],
+                "dither_base": ["vivid"],
+                "dither_type": ["ordered"],
+                "dither_matrix": ["stucki"],
+                "dither_match": ["lab"],
+                "dither_tone": ["contrast"],
+                "dither_exposure": ["1"],
+                "dither_saturation": ["0.4"],
+                "dither_contrast": ["-0.2"],
+                "dither_range": ["auto"],
+                admin.CHECKBOXES: ["dither_serpentine"],
+                "dither_serpentine": ["on"],
+            }
+        )
+    )
+    assert saved.dither == "custom" and saved.dither_base == "vivid"
+    assert saved.dither_type == "ordered" and saved.dither_serpentine
+    assert saved.dither_match == "lab" and saved.dither_tone == "contrast"
+    assert saved.dither_exposure == 1 and saved.dither_saturation == 0.4
+    assert saved.dither_contrast == -0.2 and saved.dither_range == "auto"
+    bad = store.update(**admin.form_changes({"dither_base": ["nope"], "dither_type": ["nope"]}))
+    assert bad.dither_base == "balanced" and bad.dither_type == ""
+
+
 def test_the_spotlight_box_saves_both_ways(tmp_path, source):
     page = _page(tmp_path, source())
     assert 'name="spotlight"' in page and "spotlight" in _declared(page)
