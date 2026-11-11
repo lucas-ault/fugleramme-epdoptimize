@@ -10,8 +10,9 @@ names:
 
 - **The panel's page** is what the e-ink panel shows. It is dithered to the
   panel's six inks, on plain paper, at the panel's own size and **Rotation**.
-  New birds change it at most as often as **Panel refresh** allows, and it
-  stays up while BirdNET-Go is unreachable.
+  **Panel colours** on the Display tab chooses how, and it still defaults to
+  the frame's own reduction. New birds change it at most as often as
+  **Panel refresh** allows, and it stays up while BirdNET-Go is unreachable.
 - **The web page**, at `/collage.png`, is in full colour on textured paper, at
   the size you pick under **Resolution**. With **Lock to panel** on it has the
   panel's shape, otherwise its own **Aspect**. It is drawn whenever something

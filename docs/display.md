@@ -77,6 +77,28 @@ packed around it. Default is **off**.
 
 ![A large Common Kingfisher in the middle of the collage](assets/spotlight.jpg)
 
+### Panel colours
+
+How the panel reduces the page to its six inks. Default is **Frame**, the
+reduction the panel has always used. The preview on the admin page stays in
+full colour, and so does the web page. The glass, and `frame.png`, show the
+choice after you save.
+
+**Auto** looks at the page and picks one of the presets below. A different
+set of birds can pick a different preset.
+
+| Choice | What it does |
+| --- | --- |
+| Frame | The panel's own reduction |
+| Auto | A preset chosen from the page |
+| Balanced | Compresses the display's brightness range |
+| Dynamic | An S-curve, for a brighter, punchier picture |
+| Vivid | Boosts colour, with a gentler curve, for illustrations |
+| Soft | Less contrast, and a smoother dither |
+| Grayscale | Removes colour |
+| Restore | Opens up a faded scan or painting |
+| Poster scan | Cools warm paper and keeps strong poster colours |
+
 ### Labels
 
 **Show species names** turns the labels on and off, same as **B** on the panel.
