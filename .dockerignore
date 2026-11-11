@@ -8,6 +8,7 @@
 !LICENSE
 !src
 !assets
+!vendor
 
 # Re-excluded from the trees above.
 **/__pycache__

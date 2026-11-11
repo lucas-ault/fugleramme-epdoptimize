@@ -130,6 +130,28 @@ ensure_fribidi() {
   { sudo apt-get update && sudo apt-get install -y libfribidi0; } || echo "   could not install libfribidi0"
 }
 
+# Presets and Auto run the vendored dither under Node 20. Bookworm's nodejs
+# package is 18, which cannot load the bundle, so this is NodeSource's 20.x.
+# Not fatal: without it the frame's own dither stands.
+ensure_node() {
+  local major=0
+  if have node; then
+    major="$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || echo 0)"
+  fi
+  [[ "$major" -ge 20 ]] && return 0
+  echo "==> node 20"
+  local setup
+  setup="$(mktemp)"
+  if curl -fsSL https://deb.nodesource.com/setup_20.x -o "$setup" \
+    && sudo -E bash "$setup" \
+    && sudo apt-get install -y nodejs \
+    && rm -f "$setup"; then
+    return 0
+  fi
+  rm -f "$setup"
+  echo "   could not install node 20"
+}
+
 sync_python() {
   echo "==> python env"
   # Panel extra is Pi-only; if its driver can't build, the frame still runs
@@ -168,6 +190,7 @@ require_linux
 require_deps
 echo "==> fugleramme v$VERSION"
 ensure_fribidi
+ensure_node
 sync_python
 echo "==> data dir"
 # Settings and name caches; also BirdNET-Go's bind mount, which

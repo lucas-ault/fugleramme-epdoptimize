@@ -28,11 +28,23 @@ FROM python:3.12-slim-bookworm
 
 # python:slim carries no zone data, and the frame's day is the local one.
 # libfribidi0 lets Pillow shape Arabic, Hebrew and Malayalam names.
-# ca-certificates is already in the base, but naming it upgrades it: urllib trusts
-# the system store, so a build takes Debian's latest roots even off a stale base.
+# Node 20 runs the panel colour presets. Bookworm's nodejs package is 18, so this
+# is the official binary rather than apt's. ca-certificates is already in the base,
+# but naming it upgrades it: urllib trusts the system store, so a build takes
+# Debian's latest roots even off a stale base.
+ARG NODE_VERSION=20.20.2
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata libfribidi0 ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends tzdata libfribidi0 ca-certificates curl \
+    && arch="$(dpkg --print-architecture)" \
+    && case "$arch" in \
+         amd64) node_arch=x64 ;; \
+         arm64) node_arch=arm64 ;; \
+         *) echo "no Node build for $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.gz" \
+      | tar -xz -C /usr/local --strip-components=1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version
 
 RUN groupadd --gid 1000 fugleramme \
     && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin fugleramme \
@@ -68,6 +80,10 @@ COPY assets/artwork/classic/birds/[r]* ./assets/artwork/classic/birds/
 COPY assets/artwork/classic/birds/[s]* ./assets/artwork/classic/birds/
 COPY assets/artwork/classic/birds/[t]* ./assets/artwork/classic/birds/
 COPY assets/artwork/classic/birds/[u-z]* ./assets/artwork/classic/birds/
+
+# The dither bundle. Before the source, so a Python-only release does not
+# re-pull it.
+COPY vendor/epdoptimize ./vendor/epdoptimize
 
 # Last, so an app-only release re-pulls a few hundred kilobytes.
 COPY src ./src
