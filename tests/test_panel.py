@@ -5,6 +5,9 @@ one the driver will pass through instead of dithering a second time."""
 
 from __future__ import annotations
 
+import shutil
+import subprocess
+
 import numpy
 import pytest
 from PIL import Image
@@ -99,6 +102,30 @@ def test_dither_survives_the_driver_untouched():
     palette_image.putpalette(numpy.array(DESATURATED, dtype=numpy.uint8).flatten().tobytes())
     remapped = image.convert("RGB").quantize(6, palette=palette_image, dither=Image.Dither.NONE)
 
+    assert numpy.array_equal(numpy.array(image), numpy.array(remapped))
+
+
+def test_a_preset_survives_the_driver_the_same_way():
+    # The library dithers against its own palette and this side remaps onto the
+    # driver's, with no second dither. Without Node 20 the test cannot run.
+    if shutil.which("node") is None:
+        pytest.skip("node is not installed")
+    try:
+        version = subprocess.check_output(["node", "-p", "process.versions.node"], text=True)
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("node did not answer")
+    major = version.strip().split(".", 1)[0]
+    if not major.isdigit() or int(major) < 20:
+        pytest.skip("node 20 is required")
+
+    noise = Image.effect_noise((80, 60), 90).convert("L")
+    source = Image.merge("RGB", (noise, noise.rotate(37), noise.rotate(90)))
+    image = dither(source, "balanced")
+    assert image.mode == "P"
+    assert len(image.palette.colors) == 6
+    palette_image = Image.new("P", (1, 1))
+    palette_image.putpalette(numpy.array(DESATURATED, dtype=numpy.uint8).flatten().tobytes())
+    remapped = image.convert("RGB").quantize(6, palette=palette_image, dither=Image.Dither.NONE)
     assert numpy.array_equal(numpy.array(image), numpy.array(remapped))
 
 

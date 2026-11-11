@@ -32,6 +32,7 @@ from .config import (
 from .languages import NONE, SCIENTIFIC, STATION
 from .modes import DEFAULT_MODE, MODES
 from .render.collage import DEFAULT_MARGIN, DEFAULT_RANKING, NO_LIMIT, RANKINGS
+from .render.dither import DITHERS, FRAME
 from .render.fonts import DEFAULT_FONT, DEFAULT_LABEL_SIZE, FONTS, LABEL_SIZES
 from .render.packing import DEFAULT_LAYOUT, LAYOUTS
 from .source import (
@@ -136,6 +137,9 @@ class Settings:
     style: str = ""
     # How the collage packs its birds; a plate has one bird and ignores it.
     layout: str = DEFAULT_LAYOUT
+    # The panel's reduction. `frame` is the one it has always used, so a file
+    # that names none keeps today's glass.
+    dither: str = FRAME
     # The collage with the latest bird drawn large in the middle (#185).
     spotlight: bool = False
     auto_update: bool = False
@@ -383,6 +387,7 @@ def _coerce(raw: dict, base: Settings | None = None) -> Settings:
         ranking=_one_of(str(raw.get("ranking", d.ranking)), RANKINGS, d.ranking),
         style=_style(raw, d.style),
         layout=_one_of(str(raw.get("layout", d.layout)), LAYOUTS, d.layout),
+        dither=_one_of(str(raw.get("dither", d.dither)), DITHERS, d.dither),
         spotlight=_as_bool(raw.get("spotlight"), d.spotlight),
         auto_update=_as_bool(raw.get("auto_update"), d.auto_update),
         show_names=_as_bool(raw.get("show_names"), d.show_names),

@@ -427,6 +427,17 @@ def test_a_launch_default_only_fills_in_what_the_file_does_not_say(tmp_path):
     assert SettingsStore(path, flagged).get().detector_url == "http://saved:8090"
 
 
+def test_a_missing_or_unknown_dither_stays_the_frame(tmp_path):
+    """A file from before the setting, and a value the admin does not offer,
+    both keep the reduction the panel already uses."""
+    path = tmp_path / "settings.json"
+    assert SettingsStore(path).get().dither == "frame"
+    path.write_text(json.dumps({"dither": "nope"}))
+    assert SettingsStore(path).get().dither == "frame"
+    assert SettingsStore(path).update(dither="auto").dither == "auto"
+    assert SettingsStore(path).update(dither="balanced").dither == "balanced"
+
+
 def test_detector_connection_round_trips(tmp_path):
     path = tmp_path / "s.json"
     saved = SettingsStore(path).update(

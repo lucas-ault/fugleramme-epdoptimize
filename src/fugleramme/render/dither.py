@@ -15,10 +15,50 @@ dithering against the blend measures color distance in roughly panel space.
 
 from __future__ import annotations
 
+import json
+import logging
+import struct
+import subprocess
+
 import numpy as np
 from PIL import Image
 
+from ..config import REPO_ROOT
 from .paper import PANEL_PAPER, _reach
+
+log = logging.getLogger(__name__)
+
+# What the admin offers. `frame` is this module's own reduction, and the value a
+# settings file from before the choice names. The rest are epdoptimize's presets;
+# `auto` asks that library to pick one from the page.
+FRAME = "frame"
+DITHERS: dict[str, tuple[str, str]] = {
+    FRAME: (
+        "Frame",
+        "The panel's own reduction: the birds darkened, then Floyd-Steinberg onto the six inks.",
+    ),
+    "auto": ("Auto", "The page is classified and a preset is chosen for it."),
+    "balanced": (
+        "Balanced",
+        "Compresses the display's brightness range. A general starting point.",
+    ),
+    "dynamic": ("Dynamic", "An S-curve, for a brighter, punchier picture."),
+    "vivid": ("Vivid", "Boosts colour, with a gentler S-curve, for illustrations."),
+    "soft": ("Soft", "Less contrast, and a smoother dither."),
+    "grayscale": ("Grayscale", "Removes colour and matches in perceptual brightness."),
+    "restore": ("Restore", "Opens up a faded scan or painting before mapping it to the inks."),
+    "posterScan": (
+        "Poster scan",
+        "Cools warm paper, holds the black ink, and keeps strong poster colours.",
+    ),
+}
+
+# Bookworm's nodejs package is 18, which cannot run the bundle. NodeSource's 20.x can.
+NODE_INSTALL = "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs"
+_SCRIPT = REPO_ROOT / "vendor" / "epdoptimize" / "dither.mjs"
+_node_ok = False
+_last_failure: str | None = None
+_last_auto: tuple[str, str] | None = None
 
 # Driver index order: black, white, yellow, red, blue, green.
 _DESATURATED = [(0, 0, 0), (255, 255, 255), (255, 255, 0), (255, 0, 0), (0, 0, 255), (0, 255, 0)]
@@ -71,9 +111,100 @@ def _pop(image: Image.Image) -> Image.Image:
     return Image.fromarray(np.clip(np.rint(out), 0, 255).astype(np.uint8))
 
 
-def dither(image: Image.Image) -> Image.Image:
-    """Quantize an RGB image to the 6-color panel palette (returns mode "P")."""
+def _frame(image: Image.Image) -> Image.Image:
     return _pop(image).quantize(palette=_palette_image(), dither=Image.Dither.FLOYDSTEINBERG)
+
+
+def _device_palette() -> Image.Image:
+    """The driver's six inks, so a no-dither quantize lands on its index order."""
+    pal = Image.new("P", (1, 1))
+    flat: list[int] = []
+    for colour in _DESATURATED:
+        flat += list(colour)
+    flat += [0, 0, 0] * (256 - len(_DESATURATED))
+    pal.putpalette(flat)
+    return pal
+
+
+def node_ready() -> bool:
+    """Whether `node` is present and new enough to run the vendored bundle.
+    A miss is checked again next time; a hit sticks for the process."""
+    global _node_ok
+    if _node_ok:
+        return True
+    try:
+        done = subprocess.run(
+            ["node", "--version"], capture_output=True, text=True, timeout=5, check=False
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    major = done.stdout.strip().lstrip("v").split(".", 1)[0]
+    _node_ok = done.returncode == 0 and major.isdigit() and int(major) >= 20
+    return _node_ok
+
+
+def _failed(reason: str, image: Image.Image) -> Image.Image:
+    """The frame dither, logged once per distinct cause so a missing Node does not
+    fill the journal on every render."""
+    global _last_failure
+    if reason != _last_failure:
+        log.warning("Panel colour preset unavailable (%s); using the frame dither", reason)
+        _last_failure = reason
+    return _frame(image)
+
+
+def _note_auto(stderr: bytes) -> None:
+    """Auto names its classification when that choice changes, the way a missing
+    plate is logged once."""
+    global _last_auto
+    line = next(
+        (item for item in stderr.decode(errors="replace").splitlines() if item.startswith("EPD ")),
+        "",
+    )
+    try:
+        choice = json.loads(line.removeprefix("EPD "))
+    except json.JSONDecodeError:
+        return
+    key = (str(choice.get("imageKind", "")), str(choice.get("preset", "")))
+    if key == _last_auto:
+        return
+    _last_auto = key
+    log.info("Auto dither chose %s for a %s page", key[1], key[0])
+
+
+def _epd(image: Image.Image, preset: str) -> Image.Image:
+    """epdoptimize against its Spectra 6 palette, then the driver's inks with no
+    second dither. A failure keeps the page moving on the frame dither."""
+    global _last_failure
+    rgba = image.convert("RGBA")
+    width, height = rgba.size
+    try:
+        done = subprocess.run(
+            ["node", str(_SCRIPT), preset],
+            input=struct.pack("<II", width, height) + rgba.tobytes(),
+            capture_output=True,
+            check=True,
+            timeout=120,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.decode(errors="replace").strip().splitlines()
+        return _failed(detail[-1] if detail else f"exit {exc.returncode}", image)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return _failed(str(exc), image)
+    if len(done.stdout) != width * height * 3:
+        return _failed(f"short reply, {len(done.stdout)} bytes", image)
+    _last_failure = None
+    if preset == "auto":
+        _note_auto(done.stderr)
+    rgb = Image.frombytes("RGB", (width, height), done.stdout)
+    return rgb.quantize(palette=_device_palette(), dither=Image.Dither.NONE)
+
+
+def dither(image: Image.Image, preset: str = FRAME) -> Image.Image:
+    """Quantize an RGB image to the 6-color panel palette (returns mode "P")."""
+    if preset not in DITHERS or preset == FRAME:
+        return _frame(image)
+    return _epd(image, preset)
 
 
 def monochrome(image: Image.Image) -> Image.Image:

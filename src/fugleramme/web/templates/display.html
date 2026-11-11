@@ -29,6 +29,15 @@
   {% call checkbox("spotlight", settings.spotlight, declared=true) %}Spotlight mode {{ hint("Showcase the latest heard bird in the middle.") }}{% endcall %}
 </div>
 
+<div class="card" id="dither">
+  <h2>Panel colours {{ hint(dither_hint) }}</h2>
+  <label><span>Dither</span>
+    <select name="dither">{{ options(dithers, settings.dither) }}</select></label>
+  {% if node_missing %}
+  <p class="note warn">This machine can't run the panel colour presets yet. Run <code class="cmd">{{ node_install }}</code> and they take effect on the next render. Until then the panel keeps its own reduction.</p>
+  {% endif %}
+</div>
+
 <div class="card" id="names">
   <h2>Labels</h2>
   {% call checkbox("show_names", settings.show_names, declared=true) %}Display bird names{% endcall %}

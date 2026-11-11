@@ -248,7 +248,15 @@ def run(config: Config) -> None:
         )
         try:
             last_artless = _log_artless(ctx, last_artless)
-            key = (modes.state_key(ctx), outside, settings.rotation, test is not None)
+            # dither is panel-only, so the collage key and the kiosk token leave it
+            # out. The loop still has to see it, or a saved preset never reaches the glass.
+            key = (
+                modes.state_key(ctx),
+                outside,
+                settings.rotation,
+                settings.dither,
+                test is not None,
+            )
             # The floor paces the birds alone; a saved setting, or a test starting or
             # ending, goes straight through.
             paced = (_paced(settings), test)
@@ -257,17 +265,23 @@ def run(config: Config) -> None:
             )
             if due and test is not None:
                 # The glass's alone: /frame.e6 and /frame.png keep the page.
-                pending = (banded(dither(modes.render(ctx)), ctx.margin, BLACK), settings.rotation)
+                pending = (
+                    banded(dither(modes.render(ctx), settings.dither), ctx.margin, BLACK),
+                    settings.rotation,
+                )
                 log.info("Showing a margin test on the panel at %dx%d", *size)
                 last_key, last_settings = key, paced
             elif due:
-                panel_image = dither(modes.render(ctx))
+                panel_image = dither(modes.render(ctx), settings.dither)
                 panel_image.save(config.output_path)
                 log.info("Rendered %s for the panel at %dx%d", ctx.mode, *size)
                 frame = (panel_image, settings.rotation)
                 external = frame
                 if outside != size:
-                    external = (dither(modes.render(replace(ctx, resolution=outside))), frame[1])
+                    external = (
+                        dither(modes.render(replace(ctx, resolution=outside)), settings.dither),
+                        frame[1],
+                    )
                     log.info("Rendered %s for the external panel at %dx%d", ctx.mode, *outside)
                 status.rendered(external)
                 last_key, last_settings, last_render = key, paced, time.monotonic()

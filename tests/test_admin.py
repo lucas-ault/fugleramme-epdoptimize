@@ -302,6 +302,15 @@ def test_the_collage_fields_render_and_a_plate_mode_save_leaves_the_layout_alone
     assert saved.layout == "voids" and saved.spotlight
 
 
+def test_the_dither_select_saves_a_preset_and_auto(tmp_path, source):
+    page = _page(tmp_path, source())
+    assert 'name="dither"' in page and "Panel colours" in page
+    store = SettingsStore(tmp_path / "s.json")
+    assert store.update(**admin.form_changes({"dither": ["vivid"]})).dither == "vivid"
+    assert store.update(**admin.form_changes({"dither": ["auto"]})).dither == "auto"
+    assert store.update(**admin.form_changes({"dither": ["nope"]})).dither == "frame"
+
+
 def test_the_spotlight_box_saves_both_ways(tmp_path, source):
     page = _page(tmp_path, source())
     assert 'name="spotlight"' in page and "spotlight" in _declared(page)

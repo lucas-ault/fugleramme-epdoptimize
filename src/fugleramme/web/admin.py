@@ -43,6 +43,7 @@ from ..languages import (
 from ..modes import MODES
 from ..names import available_styles, image_for, normalize, origin_of, source_of
 from ..render.collage import KEY_LIMIT, NO_LIMIT, RANKINGS
+from ..render.dither import DITHERS, FRAME, NODE_INSTALL, node_ready
 from ..render.fonts import FONTS, LABEL_SIZES, face, load, needs_shaping
 from ..render.packing import LAYOUTS
 from ..settings import (
@@ -569,6 +570,10 @@ def display_tab(
         rankings=list(RANKINGS.items()),
         layouts=[(key, layout.label) for key, layout in LAYOUTS.items()],
         layout_hint="\n\n".join(f"{layout.label}: {layout.blurb}" for layout in LAYOUTS.values()),
+        dithers=[(key, label) for key, (label, _) in DITHERS.items()],
+        dither_hint="\n\n".join(f"{label}: {blurb}" for label, blurb in DITHERS.values()),
+        node_missing=settings.dither != FRAME and not node_ready(),
+        node_install=NODE_INSTALL,
         names_failure=names_failure,
         languages=_language_options(languages, settings.primary_language),
         second_languages=_language_options(languages, settings.secondary_language, optional=True),
