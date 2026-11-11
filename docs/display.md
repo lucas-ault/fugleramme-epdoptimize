@@ -85,7 +85,8 @@ glass, and `frame.png` all show the choice. The preview includes a change
 you have not saved yet.
 
 **Auto** looks at the page and picks one of the presets below. A different
-set of birds can pick a different preset.
+set of birds can pick a different preset. The paper, and the soft edge around
+each bird, stay on the frame's own reduction either way. The preset is for the birds.
 
 | Choice | What it does |
 | --- | --- |

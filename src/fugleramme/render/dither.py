@@ -24,7 +24,7 @@ import numpy as np
 from PIL import Image
 
 from ..config import REPO_ROOT
-from .paper import PANEL_PAPER, _reach
+from .paper import PANEL_PAPER, _reach, paper_texture
 
 log = logging.getLogger(__name__)
 
@@ -115,6 +115,31 @@ def _frame(image: Image.Image) -> Image.Image:
     return _pop(image).quantize(palette=_palette_image(), dither=Image.Dither.FLOYDSTEINBERG)
 
 
+def _paper_mask(image: Image.Image) -> np.ndarray:
+    """The bare sheet and the halo around each bird. The web page is the grained
+    sheet and the panel page is flat, and either one is most of the pixels, so a
+    preset's curve lifts the page to white unless these are put back."""
+    rgb = np.asarray(image.convert("RGB"), np.float64)
+    flat = np.linalg.norm(rgb - np.array(PANEL_PAPER), axis=2)
+    grained = np.asarray(paper_texture(*image.size), np.float64)
+    dist = np.minimum(flat, np.linalg.norm(rgb - grained, axis=2))
+    bare = dist <= 1
+    return bare | (_reach(bare, dist <= _HALO, _HALO_REACH) > 0)
+
+
+def _restore_paper(source: Image.Image, reduced: Image.Image) -> Image.Image:
+    """The preset's inks for the birds, the frame reduction for the paper. Both
+    share the driver's index order. The frame's palette is what a preview shows
+    for an ink, and it still remaps onto the driver as the identity."""
+    framed = _frame(source)
+    mask = _paper_mask(source)
+    out = np.array(reduced)
+    out[mask] = np.asarray(framed)[mask]
+    page = Image.fromarray(out, "P")
+    page.putpalette(framed.getpalette() or [])
+    return page
+
+
 def _device_palette() -> Image.Image:
     """The driver's six inks, so a no-dither quantize lands on its index order."""
     pal = Image.new("P", (1, 1))
@@ -174,7 +199,9 @@ def _note_auto(stderr: bytes) -> None:
 
 def _epd(image: Image.Image, preset: str) -> Image.Image:
     """epdoptimize against its Spectra 6 palette, then the driver's inks with no
-    second dither. A failure keeps the page moving on the frame dither."""
+    second dither. The paper and the halo are put back from the frame reduction,
+    so the preset's curve does not lift the sheet to white. A failure keeps the
+    page moving on the frame dither."""
     global _last_failure
     rgba = image.convert("RGBA")
     width, height = rgba.size
@@ -197,7 +224,8 @@ def _epd(image: Image.Image, preset: str) -> Image.Image:
     if preset == "auto":
         _note_auto(done.stderr)
     rgb = Image.frombytes("RGB", (width, height), done.stdout)
-    return rgb.quantize(palette=_device_palette(), dither=Image.Dither.NONE)
+    reduced = rgb.quantize(palette=_device_palette(), dither=Image.Dither.NONE)
+    return _restore_paper(image, reduced)
 
 
 def dither(image: Image.Image, preset: str = FRAME) -> Image.Image:

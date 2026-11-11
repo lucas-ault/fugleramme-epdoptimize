@@ -14,6 +14,7 @@ from PIL import Image
 
 from fugleramme.panel import Panel, external_resolution, resolution_of
 from fugleramme.render.dither import dither
+from fugleramme.render.paper import PANEL_PAPER, paper_texture
 
 # inky.inky_el133uf1.DESATURATED_PALETTE - what the driver quantizes against.
 DESATURATED = [
@@ -105,9 +106,7 @@ def test_dither_survives_the_driver_untouched():
     assert numpy.array_equal(numpy.array(image), numpy.array(remapped))
 
 
-def test_a_preset_survives_the_driver_the_same_way():
-    # The library dithers against its own palette and this side remaps onto the
-    # driver's, with no second dither. Without Node 20 the test cannot run.
+def _node_20() -> None:
     if shutil.which("node") is None:
         pytest.skip("node is not installed")
     try:
@@ -118,6 +117,12 @@ def test_a_preset_survives_the_driver_the_same_way():
     if not major.isdigit() or int(major) < 20:
         pytest.skip("node 20 is required")
 
+
+def test_a_preset_survives_the_driver_the_same_way():
+    # The library dithers against its own palette and this side remaps onto the
+    # driver's, with no second dither. Without Node 20 the test cannot run.
+    _node_20()
+
     noise = Image.effect_noise((80, 60), 90).convert("L")
     source = Image.merge("RGB", (noise, noise.rotate(37), noise.rotate(90)))
     image = dither(source, "balanced")
@@ -127,6 +132,25 @@ def test_a_preset_survives_the_driver_the_same_way():
     palette_image.putpalette(numpy.array(DESATURATED, dtype=numpy.uint8).flatten().tobytes())
     remapped = image.convert("RGB").quantize(6, palette=palette_image, dither=Image.Dither.NONE)
     assert numpy.array_equal(numpy.array(image), numpy.array(remapped))
+
+
+def test_a_preset_keeps_the_frames_paper():
+    # Grayscale would pull the sheet with the birds. The sheet and its halo stay
+    # on the frame reduction; the bird does not.
+    _node_20()
+    source = Image.new("RGB", (48, 36), PANEL_PAPER)
+    source.paste(Image.new("RGB", (12, 10), (20, 40, 180)), (18, 13))
+    page = dither(source, "grayscale")
+    framed = dither(source)
+    assert page.convert("RGB").getpixel((0, 0)) == framed.convert("RGB").getpixel((0, 0))
+    assert page.getpixel((24, 18)) != framed.getpixel((24, 18))
+
+    textured = paper_texture(48, 36)
+    textured.paste(Image.new("RGB", (12, 10), (20, 40, 180)), (18, 13))
+    page = dither(textured, "grayscale")
+    framed = dither(textured)
+    assert page.convert("RGB").getpixel((0, 0)) == framed.convert("RGB").getpixel((0, 0))
+    assert page.getpixel((24, 18)) != framed.getpixel((24, 18))
 
 
 def test_the_external_panel_takes_its_pick_else_the_inky_s_size_else_the_13_inch():
