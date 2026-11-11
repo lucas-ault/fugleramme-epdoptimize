@@ -73,10 +73,29 @@
     paper.style.backgroundPosition = box.left + "px " + box.top + "px";
   };
   const calm = matchMedia("(prefers-reduced-motion: reduce)");
+  const root = document.documentElement;
+  // A dithered page is opaque, so the surround takes its corner ink. The setup
+  // screen is ink over nothing and still shows the paper tile.
+  const ground = () => {
+    const sample = document.createElement("canvas");
+    sample.width = sample.height = 1;
+    const pen = sample.getContext("2d");
+    pen.drawImage(collage, 0, 0, 1, 1);
+    const px = pen.getImageData(0, 0, 1, 1).data;
+    if (px[3] < 255) return false;
+    paper.className = "";
+    root.style.background = `rgb(${px[0]}, ${px[1]}, ${px[2]})`;
+    return true;
+  };
   // Hidden until it loads, so the first page fades in like an update.
   collage.onload = () => {
     const reveal = collage.hidden && !calm.matches;
     show(true);
+    if (ground()) {
+      collage.className = reveal ? "fade" : "";
+      if (reveal) collage.onanimationend = () => { collage.className = ""; };
+      return;
+    }
     fitPaper();
     paper.className = reveal ? "up fade" : "up";
     if (!reveal) return;
@@ -95,7 +114,6 @@
     next.onanimationend = () => { collage.src = next.src; collage.decode().finally(() => next.remove()); };
     over.append(next);
   };
-  const root = document.documentElement;
   let fade;
   const sleep = () => { clearTimeout(fade); root.classList.remove("awake"); };
   const wake = () => {

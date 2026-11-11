@@ -1,13 +1,13 @@
-"""Kiosk collage: full-color composite of the species seen in the lookback window.
+"""The collage: the species seen in the lookback window.
 
-This is the web/kiosk view (also dithered onto the panel). It uses the source
-PNGs at full color and packs them by their silhouettes: opaque pixels never
-overlap and nothing clips off screen, but the transparent margins are free to
-overlap so birds nestle closely. Birds are sized by their real body mass
-(compressed, see sizes.py) and placed largest-first by the packer
-`settings.layout` picks (packing.py); the default spiral works outward from the
-centre, so big birds land in the middle. The whole set is then scaled to fill
-the canvas.
+Packed full colour from the source plates. The kiosk, the admin preview and the
+panel dither that page down to the six inks; this module returns it before the
+reduction. Opaque pixels never overlap and nothing clips off screen, but the
+transparent margins are free to overlap so birds nestle closely. Birds are sized
+by their real body mass (compressed, see sizes.py) and placed largest-first by
+the packer `settings.layout` picks (packing.py); the default spiral works
+outward from the centre, so big birds land in the middle. The whole set is then
+scaled to fill the canvas.
 
 Species with no artwork are omitted (there is nothing to draw for them once
 names are off). The name label is an admin toggle, on by default, and reads in

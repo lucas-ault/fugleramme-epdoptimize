@@ -1,8 +1,8 @@
 """Frame service main loop.
 
 One page, two outputs (issue #1 "render once, fan out"): the web/kiosk view
-serves it full-color on request; the Inky panel gets the same page dithered to 6
-colors. The loop re-renders the panel image only when the mode's own key changes
+and the Inky panel both dither it to 6 colors, each at its own size. The loop
+re-renders the panel image only when the mode's own key changes
 - see modes.py - a natural debounce for the slow e-ink refresh. The web view
 renders fresh per request, at its own size - the panel's shape while locked to it.
 
@@ -248,13 +248,12 @@ def run(config: Config) -> None:
         )
         try:
             last_artless = _log_artless(ctx, last_artless)
-            # dither is panel-only, so the collage key and the kiosk token leave it
-            # out. The loop still has to see it, or a saved preset never reaches the glass.
+            # dither rides in the page key, so a saved preset repaints the glass and
+            # the kiosk reloads. The pack cache does not carry it.
             key = (
                 modes.state_key(ctx),
                 outside,
                 settings.rotation,
-                settings.dither,
                 test is not None,
             )
             # The floor paces the birds alone; a saved setting, or a test starting or

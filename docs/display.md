@@ -80,9 +80,9 @@ packed around it. Default is **off**.
 ### Panel colours
 
 How the panel reduces the page to its six inks. Default is **Frame**, the
-reduction the panel has always used. The preview on the admin page stays in
-full colour, and so does the web page. The glass, and `frame.png`, show the
-choice after you save.
+reduction the panel has always used. The admin preview, the web page, the
+glass, and `frame.png` all show the choice. The preview includes a change
+you have not saved yet.
 
 **Auto** looks at the page and picks one of the presets below. A different
 set of birds can pick a different preset.

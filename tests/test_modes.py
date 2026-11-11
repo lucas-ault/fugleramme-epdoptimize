@@ -4,6 +4,7 @@ would freeze the frame."""
 
 from __future__ import annotations
 
+import io
 from dataclasses import replace
 from datetime import datetime, timedelta
 
@@ -254,6 +255,17 @@ def test_a_render_is_cached_until_its_key_moves(tmp_path, images, source):
     ctx = _ctx(detections, images, tmp_path, "latest")
     assert modes.png_bytes(ctx) is modes.png_bytes(ctx)
     assert modes.png_bytes(_ctx(detections, images, tmp_path, "arrival")) != modes.png_bytes(ctx)
+
+
+def test_the_web_page_is_the_dithered_page(tmp_path, images, source):
+    """The kiosk and the admin preview serve the reduced page, and a new choice
+    is a new page."""
+    detections = source(rows=[_row(1, BLACKBIRD, 1)])
+    ctx = _ctx(detections, images, tmp_path, "latest")
+    image = Image.open(io.BytesIO(modes.png_bytes(ctx)))
+    assert image.mode == "P"
+    assert len(image.getcolors(maxcolors=16) or []) <= 6
+    assert modes.state_key(replace(ctx, dither="vivid")) != modes.state_key(ctx)
 
 
 def test_a_numbered_key_caps_the_page(tmp_path, images, source):

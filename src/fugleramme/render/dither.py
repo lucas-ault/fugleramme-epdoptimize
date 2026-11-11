@@ -1,7 +1,7 @@
 """Panel color reduction.
 
-The Inky Impression (Spectra 6) shows only 6 colors. The kiosk collage is full
-color; for the panel it is reduced here rather than in the driver, because
+The Inky Impression (Spectra 6) shows only 6 colors. The panel, the kiosk and
+the admin preview are reduced here rather than in the driver, because
 `inky.set_image` re-dithers anything that is not already a 6-color "P" image -
 dithering an already-dithered image smears it. Handing it a "P" image with
 exactly 6 palette entries makes it skip its own dither and just remap indices,

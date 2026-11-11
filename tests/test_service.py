@@ -264,8 +264,8 @@ def test_the_refresh_floor_paces_the_birds_but_never_a_saved_setting(
 
 
 def test_a_dither_change_repaints_past_the_refresh_floor(tmp_path, images, detector, monkeypatch):
-    """The collage key does not carry the panel dither, so the loop's own key must,
-    or a saved preset waits out the floor and then still never paints."""
+    """The dither rides in the page key, so a saved preset reaches the glass on
+    the next tick even while the birds are held."""
     url, _httpd = detector(count=4, seed=0)
     config = Config(
         images_dir=images,

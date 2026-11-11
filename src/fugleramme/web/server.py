@@ -1,7 +1,7 @@
 """HTTP server for the kiosk and admin views.
 
-The kiosk (`/`) serves one thing: a full-color page of what the frame is
-showing, full-screen. It never reloads; instead it polls `/state` and swaps the
+The kiosk (`/`) serves one thing: the page the frame is showing, reduced to
+the panel's six inks, full-screen. It never reloads; instead it polls `/state` and swaps the
 image only when the page actually changed, so a new bird appears within one poll
 interval with no flash. Presentation settings live at `/admin` and are read per
 request from the shared SettingsStore, so a change takes effect without a
@@ -43,6 +43,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from .. import __version__, buttons, e6, modes, updates, wifi
 from ..languages import namer
 from ..panel import Panel, resolution_of, to_glass
+from ..render.dither import BLACK, dither
 from ..render.fonts import cut
 from ..render.page import banded
 from ..render.paper import paper_tile
@@ -155,7 +156,8 @@ def _banded_png(ctx: modes.Context) -> bytes:
     """The kiosk's page under a margin test, rendered past the page cache so the band
     never lands in it."""
     buffer = io.BytesIO()
-    banded(modes.render(ctx).convert("RGB"), ctx.margin, (0, 0, 0)).save(buffer, format="PNG")
+    page = dither(modes.render(ctx), ctx.dither)
+    banded(page, ctx.margin, BLACK).save(buffer, format="PNG")
     return buffer.getvalue()
 
 

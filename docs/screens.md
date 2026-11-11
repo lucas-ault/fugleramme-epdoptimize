@@ -13,12 +13,12 @@ names:
   **Panel colours** on the Display tab chooses how, and it still defaults to
   the frame's own reduction. New birds change it at most as often as
   **Panel refresh** allows, and it stays up while BirdNET-Go is unreachable.
-- **The web page**, at `/collage.png`, is in full colour on textured paper, at
-  the size you pick under **Resolution**. With **Lock to panel** on it has the
-  panel's shape, otherwise its own **Aspect**. It is drawn whenever something
-  asks for it, so new birds show up straight away.
+- **The web page**, at `/collage.png`, is that same reduction, on textured
+  paper, at the size you pick under **Resolution**. With **Lock to panel** on
+  it has the panel's shape, otherwise its own **Aspect**. It is drawn whenever
+  something asks for it, so new birds show up straight away.
 
-The preview on the admin page is the panel's page in full colour, with any
+The preview on the admin page is the panel's page with that reduction, with any
 changes you have not saved yet. Without a panel it shows the web page.
 
 ![Overview of different rendering endpoints](assets/screens.svg)

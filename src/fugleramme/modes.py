@@ -31,6 +31,7 @@ from .languages import STATION, Drawable, Namer, english_name, station_locale
 from .names import drawable_keys, image_for, normalize, perches_for, resolve
 from .render import fonts
 from .render.collage import KEY_LIMIT, NO_LIMIT, gather_entries, render_collage, selected_species
+from .render.dither import FRAME, dither
 from .render.page import NEW, Edges, day_ordinal
 from .render.plate import effective_margin, render_plate
 from .render.setup import setup_page
@@ -69,6 +70,7 @@ class Context:
     layout: str
     spotlight: bool
     margin: Edges  # of the short side; the settings are percents
+    dither: str = FRAME  # the panel reduction; the kiosk and the preview use it too
     textured: bool = True
 
     def perches(self):
@@ -109,6 +111,7 @@ def context(
         layout=settings.layout,
         spotlight=settings.spotlight,
         margin=Edges(*(m / 100 for m in settings.margins(panel))),
+        dither=settings.dither,
         textured=textured,
     )
 
@@ -354,6 +357,7 @@ def state_key(ctx: Context) -> tuple:
         ctx.show_names,
         ctx.font_key,
         ctx.label_size,
+        ctx.dither,
         ctx.layout if mode.windowed else None,
         ctx.name_key if mode.windowed else None,
         # The plate clamps to its own margin, so a nudge under it must not repaint.
@@ -427,6 +431,6 @@ def png_bytes(ctx: Context) -> bytes:
         if _cache is not None and _cache[0] == key:
             return _cache[1]
         buffer = io.BytesIO()
-        render(ctx).save(buffer, format="PNG")
+        dither(render(ctx), ctx.dither).save(buffer, format="PNG")
         _cache = (key, buffer.getvalue())
         return _cache[1]

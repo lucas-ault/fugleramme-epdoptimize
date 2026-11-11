@@ -1032,5 +1032,7 @@ def test_a_margin_test_paints_the_kiosk_and_moves_its_token(frame):
     assert _post(frame + "/mat-test", {"margin": "20"})[0] == 204
     assert json.loads(_fetch(frame + "/state")[2])["token"] != token
     page = Image.open(io.BytesIO(_fetch(frame + "/collage.png")[2])).convert("RGB")
-    assert page.getpixel((5, 5)) == (0, 0, 0)
-    assert page.getpixel((page.width // 2, page.height // 2)) != (0, 0, 0)
+    assert page.getpixel((5, 5)) == (0, 0, 0)  # the band
+    # One paper pixel can be a black dither dot, so the middle is checked as a block.
+    middle = page.crop((page.width // 3, page.height // 3, 2 * page.width // 3, 2 * page.height // 3))
+    assert any(high > 0 for _low, high in middle.getextrema())
